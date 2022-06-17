@@ -19,7 +19,8 @@ from keras.regularizers import l2
 from keras.utils import to_categorical
 import tensorflow as tf
 from keras_preprocessing.image import ImageDataGenerator
-
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import itertools
 
 class Resnet:
     train_images: np.ndarray
@@ -48,6 +49,7 @@ class Resnet:
 
     # One_hot 編碼
     def label_preprocess(self):
+        self.y_test = self.test_labels
         self.train_labels = to_categorical(self.train_labels, 10)
         self.test_labels = to_categorical(self.test_labels, 10)
 
@@ -186,11 +188,54 @@ class Resnet:
             plt.imshow(self.train_images[i])
         plt.show()
 
+    def plot_confusion_matrix(self, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+        model = keras.models.load_model('resnet.h5')
+        p_test = model.predict(self.test_images).argmax(axis=1)
+        labels = ['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
+        cm = confusion_matrix(self.y_test, p_test)
+
+        if normalize:
+            cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+            print("Normalized confusion matrix")
+        else:
+            print('Confusion matrix, without normalization')
+
+        print(cm)
+
+        # disp = ConfusionMatrixDisplay(confusion_matrix=cm, )
+        # disp.plot(cmap=plt.cm.Blues)
+        #
+        # plt.show()
+
+        plt.imshow(cm, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, labels, rotation=45)
+        plt.yticks(tick_marks, labels)
+
+        fmt = '.2f' if normalize else 'd'
+        thresh = cm.max() / 2.
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, format(cm[i, j], fmt),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+        plt.tight_layout()
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.xticks(rotation=90)
+        plt.show()
+
 
 if __name__ == '__main__':
     resnet = Resnet()
     resnet.normalization()
     resnet.label_preprocess()
     resnet.data_generator()
-    model = resnet.res_net_model()
-    resnet.train(model)
+    # model = resnet.res_net_model()
+    # resnet.train(model)
+    resnet.plot_confusion_matrix(list(range(10)))
